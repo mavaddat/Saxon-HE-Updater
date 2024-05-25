@@ -47,6 +47,10 @@ jobs:
       with:
         name: publish-output
   
+    - name: List files
+      run: |
+        ls -R ./
+      shell: bash
     - name: Create Release
       id: create_release
       uses: actions/create-release@v1
@@ -57,10 +61,6 @@ jobs:
         release_name: Release ${{ github.run_number }} (${{ github.sha }})
         draft: false
         prerelease: false
-    - name: List files
-      run: |
-        ls -R ./
-      shell: bash
     - name: Upload Release Asset
       uses: actions/upload-release-asset@v1
       env:
