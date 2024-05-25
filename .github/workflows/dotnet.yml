@@ -61,6 +61,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./Saxon-HE Updater.exe
+          asset_path: ./published/Saxon-HE Updater.exe
           asset_name: Saxon-HE Updater.exe
           asset_content_type: application/octet-stream
