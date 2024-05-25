@@ -31,8 +31,8 @@ jobs:
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: published-app
-        path: ./publish
+        name: publish-output
+        path: ./bin/Release/net8.0/publish
   
   release:
     needs: build
@@ -45,7 +45,7 @@ jobs:
     - name: Download artifacts
       uses: actions/download-artifact@v4
       with:
-        name: published-app
+        name: publish-output
   
     - name: Create Release
       id: create_release
@@ -59,7 +59,7 @@ jobs:
         prerelease: false
     - name: List files
       run: |
-        ls -R ./published-app
+        ls -R ./
       shell: bash
     - name: Upload Release Asset
       uses: actions/upload-release-asset@v1
@@ -67,6 +67,6 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./published-app/Saxon-HE Updater.exe
+        asset_path: ./publish-output/Saxon-HE Updater.exe
         asset_name: Saxon-HE Updater.exe
         asset_content_type: application/octet-stream
