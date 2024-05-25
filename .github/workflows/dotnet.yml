@@ -33,31 +33,31 @@ jobs:
       with:
         name: published-app
         path: ./publish
-
+  
   release:
     needs: build
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     permissions:
       contents: write
-
+  
     steps:
     - name: Download artifacts
       uses: actions/download-artifact@v4
       with:
         name: published-app
-
+  
     - name: Create Release
       id: create_release
       uses: actions/create-release@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        tag_name: ${{ github.sha }}
-        release_name: Release ${{ github.sha }}
+        tag_name: release-${{ github.run_number }}
+        release_name: Release ${{ github.run_number }} (${{ github.sha }})
         draft: false
         prerelease: false
-
+  
     - name: Upload Release Asset
       uses: actions/upload-release-asset@v1
       env:
