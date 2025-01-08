@@ -179,7 +179,7 @@ namespace Saxon_HE_Updater
 
             Console.WriteLine($"Verifying GPG signature for '{fileUrl}'...");
             var result = VerifyGpg(sigPath, filePath);
-            Console.WriteLine(result ? $"Successfully verified GPG signature for '{fileUrl}'" : $"Failed to verify GPG signature for '{fileUrl}'");
+            Console.WriteLine(result ? $"Successfully verified GPG signature for '{fileUrl}'" : $"Failed to verify GPG signature for '{fileUrl}'. See '{sigUrl}'");
             return result;
         }
 
