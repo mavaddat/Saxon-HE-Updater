@@ -40,7 +40,7 @@ namespace Saxon_HE_Updater
             Console.WriteLine("Parsing HTML content to get file links...");
             var parser = new HtmlParser();
             var htmlDoc = parser.ParseDocument(htmlContent);
-            var fileLinks = htmlDoc.QuerySelectorAll("#contents > a").Select(e=>e.InnerHtml).Where(link=>link.EndsWith(".jar")).ToArray();
+            var fileLinks = htmlDoc.QuerySelectorAll("#contents > a").Select(e => e.InnerHtml).Where(link => link.EndsWith(".jar")).ToArray();
 
             foreach (var link in fileLinks)
             {
@@ -48,16 +48,16 @@ namespace Saxon_HE_Updater
                 var fileUrl = $"{versionUrl}{link}";
 
                 // Download and verify file
-                Console.WriteLine($"Downloading and verifying {fileUrl}...");
+                Console.WriteLine($"Downloading and verifying '{fileUrl}'...");
                 var filePath = DownloadAndVerifyFile(fileUrl, Path.GetTempPath());
                 if (string.IsNullOrEmpty(filePath)) continue;
-                Console.WriteLine($"Successfully downloaded and verified {fileUrl}");
+                Console.WriteLine($"Successfully downloaded and verified '{fileUrl}'");
 
                 // Move the file to the destination folder
                 Console.WriteLine("Moving the file to the destination folder...");
                 var destinationFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Programs", "Saxonica");
                 Directory.CreateDirectory(destinationFolder);
-                File.Move(filePath, Path.Combine(destinationFolder, link),true);
+                File.Move(filePath, Path.Combine(destinationFolder, link), true);
                 Console.WriteLine($"Successfully moved the file to {destinationFolder}");
             }
 
@@ -66,7 +66,7 @@ namespace Saxon_HE_Updater
 
         internal static string DownloadAndVerifyFile(string fileUrl, string downloadFolder, bool withSignature = true)
         {
-            Console.WriteLine($"Downloading {fileUrl}...");
+            Console.WriteLine($"Downloading '{fileUrl}'...");
             var client = GetHttpClient();
             var fileName = Path.GetFileName(fileUrl);
             var filePath = Path.Combine(downloadFolder, fileName);
@@ -74,14 +74,14 @@ namespace Saxon_HE_Updater
             // Download the file
             var fileBytes = client.GetByteArrayAsync(fileUrl).Result;
             File.WriteAllBytes(filePath, fileBytes);
-            Console.WriteLine($"Successfully downloaded {fileUrl}");
+            Console.WriteLine($"Successfully downloaded '{fileUrl}'");
 
             // Verify file hashes
-            Console.WriteLine($"Verifying file hashes for {fileUrl}...");
+            Console.WriteLine($"Verifying file hashes for '{fileUrl}'...");
             var sigVerified = !withSignature || DownloadGpgSigAndVerify(fileUrl, filePath);
             var result = VerifyFileHashes(fileUrl, filePath) && sigVerified ? filePath : string.Empty;
-            if (sigVerified && withSignature) Console.WriteLine($"Successfully verified signature for {fileUrl}");
-            Console.WriteLine(result != string.Empty ? $"Successfully verified file hashes for {fileUrl}" : $"Failed to verify file hashes for {fileUrl}");
+            if (sigVerified && withSignature) Console.WriteLine($"Successfully verified signature for '{fileUrl}'");
+            Console.WriteLine(result != string.Empty ? $"Successfully verified file hashes for '{fileUrl}'" : $"Failed to verify file hashes for '{fileUrl}'");
             return result;
         }
 
@@ -114,24 +114,27 @@ namespace Saxon_HE_Updater
 
         internal static bool VerifyFileHashes(string fileUrl, string filePath)
         {
-            Console.WriteLine($"Verifying file hashes for {fileUrl}...");
+            Console.WriteLine($"Verifying file hashes for '{fileUrl}'...");
             string[] hashAlgorithms = ["md5", "sha1", "sha256", "sha512"];
             var hashesMatch = true;
 
             foreach (var hashAlgorithm in hashAlgorithms)
             {
-                Console.WriteLine($"Checking {hashAlgorithm} hash for {fileUrl}...");
+                Console.WriteLine($"Checking {hashAlgorithm} hash for '{fileUrl}'...");
                 var hashUrl = $"{fileUrl}.{hashAlgorithm}";
                 var client = GetHttpClient();
                 var remoteHash = client.GetStringAsync(hashUrl).Result;
-
-#pragma warning disable SYSLIB0045
-                using var hashAlg = HashAlgorithm.Create(hashAlgorithm);
                 var fileBytes = File.ReadAllBytes(filePath);
-#pragma warning restore SYSLIB0045
-                var localHash = BitConverter.ToString(hashAlg?.ComputeHash(fileBytes) ?? []).Replace("-", string.Empty).ToLowerInvariant();
+                var localHash = hashAlgorithm switch
+                {
+                    "md5" => Convert.ToHexStringLower(MD5.HashData(fileBytes)),
+                    "sha1" => Convert.ToHexStringLower(SHA1.HashData(fileBytes)),
+                    "sha256" => Convert.ToHexStringLower(SHA256.HashData(fileBytes)),
+                    "sha512" => Convert.ToHexStringLower(SHA512.HashData(fileBytes)),
+                    _ => throw new InvalidOperationException($"Unsupported hash algorithm: {hashAlgorithm}")
+                };
                 hashesMatch = hashesMatch && remoteHash == localHash;
-                Console.WriteLine(hashesMatch ? $"Successfully checked {hashAlgorithm} hash for {fileUrl}" : $"Failed to check {hashAlgorithm} hash for {fileUrl}");
+                Console.WriteLine(hashesMatch ? $"Successfully checked {hashAlgorithm} hash for '{fileUrl}'" : $"Failed to check {hashAlgorithm} hash for '{fileUrl}'.\n\tRemote hash: '{remoteHash}'\n\tLocal hash: '{localHash}'.\nSee '{hashUrl}'.");
                 if (!hashesMatch) break;
             }
 
@@ -166,17 +169,17 @@ namespace Saxon_HE_Updater
 
         static bool DownloadGpgSigAndVerify(string fileUrl, string filePath)
         {
-            Console.WriteLine($"Downloading GPG signature for {fileUrl}...");
+            Console.WriteLine($"Downloading GPG signature for '{fileUrl}'...");
             var sigUrl = $"{fileUrl}.asc";
             var sigPath = Path.GetTempFileName();
             var client = GetHttpClient();
             var asciiSig = client.GetStringAsync(sigUrl).Result;
-            File.WriteAllText(sigPath,asciiSig);
-            Console.WriteLine($"Successfully downloaded GPG signature for {fileUrl}");
+            File.WriteAllText(sigPath, asciiSig);
+            Console.WriteLine($"Successfully downloaded GPG signature for '{fileUrl}'");
 
-            Console.WriteLine($"Verifying GPG signature for {fileUrl}...");
+            Console.WriteLine($"Verifying GPG signature for '{fileUrl}'...");
             var result = VerifyGpg(sigPath, filePath);
-            Console.WriteLine(result ? $"Successfully verified GPG signature for {fileUrl}" : $"Failed to verify GPG signature for {fileUrl}");
+            Console.WriteLine(result ? $"Successfully verified GPG signature for '{fileUrl}'" : $"Failed to verify GPG signature for '{fileUrl}'");
             return result;
         }
 
