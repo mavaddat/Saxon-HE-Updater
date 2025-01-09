@@ -45,13 +45,12 @@ jobs:
     - name: Download artifacts
       uses: actions/download-artifact@v4
       
-    - name: List files
-      run: ls -R
-
     - name: Create Release
       uses: ncipollo/release-action@v1
       with:
-        artifacts: "publish/publish.zip"
+        artifacts: |
+          publish/*.exe
+          publish/*.pdb
         body: "Release ${{ github.run_number }} (${{ github.sha }})"
         token: "${{ secrets.GITHUB_TOKEN }}"
         tag: "release-${{ github.run_number }}"
