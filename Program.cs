@@ -144,26 +144,32 @@ namespace Saxon_HE_Updater
         private static bool VerifyGpg(string signatureFile, string downloadedFile)
         {
             Console.WriteLine($"Verifying GPG signature for {downloadedFile}...");
-            var startInfo = new ProcessStartInfo()
+            var result = false;
+            var keyServers = new[] { "hkps://keys.openpgp.org", "hkps://keyserver.ubuntu.com", "hkps://pgp.mit.edu", "hkps://pgp.surf.nl" };
+            foreach (var keyServer in keyServers)
             {
-                FileName = GpgPath,
-                Arguments = $"--auto-key-locate keyserver --keyserver hkps://keys.openpgp.org --keyserver-options auto-key-retrieve --verify \"{signatureFile}\" \"{downloadedFile}\"",
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false,
-                CreateNoWindow = true,
-            };
+                var startInfo = new ProcessStartInfo()
+                {
+                    FileName = GpgPath,
+                    Arguments = $"--auto-key-locate keyserver --keyserver {keyServer} --keyserver-options auto-key-retrieve --verify \"{signatureFile}\" \"{downloadedFile}\"",
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                };
 
-            using var process = new Process();
-            process.StartInfo = startInfo;
-            process.Start();
+                using var process = new Process();
+                process.StartInfo = startInfo;
+                process.Start();
 
-            var output = process.StandardOutput.ReadToEnd();
-            var errors = process.StandardError.ReadToEnd();
-            process.WaitForExit();
+                var output = process.StandardOutput.ReadToEnd();
+                var errors = process.StandardError.ReadToEnd();
+                process.WaitForExit();
 
-            var result = process.ExitCode == 0;
-            Console.WriteLine(result ? $"Successfully verified GPG signature for '{downloadedFile}'\n{output}" : $"Failed to verify GPG signature for '{downloadedFile}'\n{errors}");
+                result |= process.ExitCode == 0;
+                Console.WriteLine(result ? $"Successfully verified GPG signature for '{downloadedFile}'\n{output}" : $"Failed to verify GPG signature for '{downloadedFile}' using key server '{keyServer}'.\n{errors}");
+                if (result) break;
+            }
             return result;
         }
 
