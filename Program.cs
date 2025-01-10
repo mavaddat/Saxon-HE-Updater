@@ -41,7 +41,7 @@ namespace Saxon_HE_Updater
             var parser = new HtmlParser();
             var htmlDoc = parser.ParseDocument(htmlContent);
             var fileLinks = htmlDoc.QuerySelectorAll("#contents > a").Select(e => e.InnerHtml).Where(link => link.EndsWith(".jar")).ToArray();
-
+            var hasFailures = false;
             foreach (var link in fileLinks)
             {
                 Console.WriteLine($"Processing file {link}...");
@@ -50,7 +50,12 @@ namespace Saxon_HE_Updater
                 // Download and verify file
                 Console.WriteLine($"Downloading and verifying '{fileUrl}'...");
                 var filePath = DownloadAndVerifyFile(fileUrl, Path.GetTempPath());
-                if (string.IsNullOrEmpty(filePath)) continue;
+                if (string.IsNullOrEmpty(filePath))
+                {
+                    Console.WriteLine($"Failed to download and verify '{fileUrl}'");
+                    hasFailures = true;
+                    continue;
+                }
                 Console.WriteLine($"Successfully downloaded and verified '{fileUrl}'");
 
                 // Move the file to the destination folder
@@ -61,7 +66,7 @@ namespace Saxon_HE_Updater
                 Console.WriteLine($"Successfully moved the file to {destinationFolder}");
             }
 
-            Console.WriteLine("Program completed successfully.");
+            Console.WriteLine(hasFailures ? "Failed to download and verify some files" : "Successfully downloaded and verified all files");
         }
 
         internal static string DownloadAndVerifyFile(string fileUrl, string downloadFolder, bool withSignature = true)
