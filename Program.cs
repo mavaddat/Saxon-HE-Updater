@@ -11,62 +11,65 @@ namespace Saxon_HE_Updater
         private static void Main()
         {
             Console.WriteLine("Starting program...");
-
-            const string mavenRepositoryUrl = "https://repo1.maven.org/maven2/net/sf/saxon/Saxon-HE";
-            const string mavenMetadataUrl = $"{mavenRepositoryUrl}/maven-metadata.xml";
-
-            // Download and verify maven-metadata.xml
-            Console.WriteLine($"Downloading and verifying {mavenMetadataUrl}...");
-            var mavenMetadataPath = DownloadAndVerifyFile(mavenMetadataUrl, Path.GetTempPath(), withSignature: false);
-            if (string.IsNullOrEmpty(mavenMetadataPath)) return;
-            Console.WriteLine($"Successfully downloaded and verified {mavenMetadataUrl}");
-
-            // Parse maven-metadata.xml to get the latest version
-            Console.WriteLine("Parsing maven-metadata.xml to get the latest version...");
-            var xmlDoc = new XmlDocument();
-            xmlDoc.Load(mavenMetadataPath);
-            var latestVersion = xmlDoc.SelectSingleNode("/metadata/versioning/latest")?.InnerText;
-            Console.WriteLine($"Latest version is {latestVersion}");
-
-            // Download and verify JAR files
-            var versionUrl = $"{mavenRepositoryUrl}/{latestVersion}/";
-            Console.WriteLine($"Downloading and verifying JAR files from {versionUrl}...");
-            var client = GetHttpClient();
-            var response = client.GetAsync(versionUrl).Result;
-            response.EnsureSuccessStatusCode();
-            var htmlContent = response.Content.ReadAsStringAsync().Result;
-
-            // Parse HTML content to get file links
-            Console.WriteLine("Parsing HTML content to get file links...");
-            var parser = new HtmlParser();
-            var htmlDoc = parser.ParseDocument(htmlContent);
-            var fileLinks = htmlDoc.QuerySelectorAll("#contents > a").Select(e => e.InnerHtml).Where(link => link.EndsWith(".jar")).ToArray();
-            var hasFailures = false;
-            foreach (var link in fileLinks)
+            Uri saxonicaMavenUrl = new("https://repo1.maven.org/maven2/net/sf/saxon/Saxon-HE");
+            Uri xmlResolverMavenUrl = new ("https://repo1.maven.org/maven2/org/xmlresolver/xmlresolver");
+            foreach (var mavenRepositoryUrl in new[] { saxonicaMavenUrl, xmlResolverMavenUrl })
             {
-                Console.WriteLine($"Processing file {link}...");
-                var fileUrl = $"{versionUrl}{link}";
+                string mavenMetadataUrl = $"{mavenRepositoryUrl}/maven-metadata.xml";
 
-                // Download and verify file
-                Console.WriteLine($"Downloading and verifying '{fileUrl}'...");
-                var filePath = DownloadAndVerifyFile(fileUrl, Path.GetTempPath());
-                if (string.IsNullOrEmpty(filePath))
+                // Download and verify maven-metadata.xml
+                Console.WriteLine($"Downloading and verifying {mavenMetadataUrl}...");
+                var mavenMetadataPath = DownloadAndVerifyFile(mavenMetadataUrl, Path.GetTempPath(), withSignature: false);
+                if (string.IsNullOrEmpty(mavenMetadataPath)) return;
+                Console.WriteLine($"Successfully downloaded and verified {mavenMetadataUrl}");
+
+                // Parse maven-metadata.xml to get the latest version
+                Console.WriteLine("Parsing maven-metadata.xml to get the latest version...");
+                var xmlDoc = new XmlDocument();
+                xmlDoc.Load(mavenMetadataPath);
+                var latestVersion = xmlDoc.SelectSingleNode("/metadata/versioning/latest")?.InnerText;
+                Console.WriteLine($"Latest version is {latestVersion}");
+
+                // Download and verify JAR files
+                var versionUrl = $"{mavenRepositoryUrl}/{latestVersion}/";
+                Console.WriteLine($"Downloading and verifying JAR files from {versionUrl}...");
+                var client = GetHttpClient();
+                var response = client.GetAsync(versionUrl).Result;
+                response.EnsureSuccessStatusCode();
+                var htmlContent = response.Content.ReadAsStringAsync().Result;
+
+                // Parse HTML content to get file links
+                Console.WriteLine("Parsing HTML content to get file links...");
+                var parser = new HtmlParser();
+                var htmlDoc = parser.ParseDocument(htmlContent);
+                var fileLinks = htmlDoc.QuerySelectorAll("#contents > a").Select(e => e.InnerHtml).Where(link => link.EndsWith(".jar")).ToArray();
+                var hasFailures = false;
+                foreach (var link in fileLinks)
                 {
-                    Console.WriteLine($"Failed to download and verify '{fileUrl}'");
-                    hasFailures = true;
-                    continue;
+                    Console.WriteLine($"Processing file {link}...");
+                    var fileUrl = $"{versionUrl}{link}";
+
+                    // Download and verify file
+                    Console.WriteLine($"Downloading and verifying '{fileUrl}'...");
+                    var filePath = DownloadAndVerifyFile(fileUrl, Path.GetTempPath());
+                    if (string.IsNullOrEmpty(filePath))
+                    {
+                        Console.WriteLine($"Failed to download and verify '{fileUrl}'");
+                        hasFailures = true;
+                        continue;
+                    }
+                    Console.WriteLine($"Successfully downloaded and verified '{fileUrl}'");
+
+                    // Move the file to the destination folder
+                    Console.WriteLine("Moving the file to the destination folder...");
+                    var destinationFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Programs", mavenRepositoryUrl.Segments[^1]);
+                    Directory.CreateDirectory(destinationFolder);
+                    File.Move(filePath, Path.Combine(destinationFolder, link), true);
+                    Console.WriteLine($"Successfully moved the file to '{destinationFolder}'");
                 }
-                Console.WriteLine($"Successfully downloaded and verified '{fileUrl}'");
 
-                // Move the file to the destination folder
-                Console.WriteLine("Moving the file to the destination folder...");
-                var destinationFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Programs", "Saxonica");
-                Directory.CreateDirectory(destinationFolder);
-                File.Move(filePath, Path.Combine(destinationFolder, link), true);
-                Console.WriteLine($"Successfully moved the file to {destinationFolder}");
+                Console.WriteLine(hasFailures ? "Failed to download and verify some files" : "Successfully downloaded and verified all files");
             }
-
-            Console.WriteLine(hasFailures ? "Failed to download and verify some files" : "Successfully downloaded and verified all files");
         }
 
         internal static string DownloadAndVerifyFile(string fileUrl, string downloadFolder, bool withSignature = true)
