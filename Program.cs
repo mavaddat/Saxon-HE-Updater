@@ -1,4 +1,5 @@
-﻿using System.Diagnostics;
+﻿using System.ComponentModel;
+using System.Diagnostics;
 using System.Net.Http.Headers;
 using System.Security.Cryptography;
 using System.Xml;
@@ -15,7 +16,7 @@ namespace Saxon_HE_Updater
             Uri xmlResolverMavenUrl = new ("https://repo1.maven.org/maven2/org/xmlresolver/xmlresolver");
             foreach (var mavenRepositoryUrl in new[] { saxonicaMavenUrl, xmlResolverMavenUrl })
             {
-                string mavenMetadataUrl = $"{mavenRepositoryUrl}/maven-metadata.xml";
+                var mavenMetadataUrl = $"{mavenRepositoryUrl}/maven-metadata.xml";
 
                 // Download and verify maven-metadata.xml
                 Console.WriteLine($"Downloading and verifying {mavenMetadataUrl}...");
@@ -168,7 +169,24 @@ namespace Saxon_HE_Updater
 
                 using var process = new Process();
                 process.StartInfo = startInfo;
-                process.Start();
+                try
+                {
+                    process.Start();
+                }catch (Exception ex) when (ex is FileNotFoundException or Win32Exception or InvalidOperationException)
+                {
+                    Console.Error.WriteLine($"Error: GnuPG executable not found at path '{GpgPath}'. Please ensure that GnuPG is installed and the path is correct.");
+                    Console.Error.WriteLine("""
+                                            You can install GnuPG using the following command:
+                                            
+                                                winget install --id GnuPG.GnuPG
+                                            
+                                            You may need to add the public key first:
+                                            
+                                                gpg --keyserver hkps://keyserver.ubuntu.com --recv-keys A929EA2321FDBF8F
+                                            
+                                            """);
+                    return result;
+                }
 
                 var output = process.StandardOutput.ReadToEnd();
                 var errors = process.StandardError.ReadToEnd();
@@ -181,7 +199,7 @@ namespace Saxon_HE_Updater
             return result;
         }
 
-        static bool DownloadGpgSigAndVerify(string fileUrl, string filePath)
+        public static bool DownloadGpgSigAndVerify(string fileUrl, string filePath)
         {
             Console.WriteLine($"Downloading GPG signature for '{fileUrl}'...");
             var sigUrl = $"{fileUrl}.asc";
@@ -197,6 +215,24 @@ namespace Saxon_HE_Updater
             return result;
         }
 
-        private static readonly string GpgPath = Path.Join(Environment.GetEnvironmentVariable("ProgramFiles(x86)"), "gnupg", "bin", "gpg.exe");
+        private static readonly string GpgPath = FindGpgPath();
+        private static string FindGpgPath()
+        {
+            var process = new Process
+            {
+                StartInfo = new ProcessStartInfo
+                {
+                    FileName = "where",
+                    Arguments = "gpg.exe",
+                    RedirectStandardOutput = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                }
+            };
+            process.Start();
+            var output = process.StandardOutput.ReadToEnd();
+            process.WaitForExit();
+            return output.Trim();
+        }
     }
 }
