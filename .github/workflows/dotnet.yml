@@ -15,11 +15,13 @@ jobs:
     runs-on: windows-2025
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
     - name: Setup .NET
-      uses: actions/setup-dotnet@v4
+      uses: actions/setup-dotnet@v6
       with:
-        dotnet-version: 9.0.x
+        dotnet-version: latest
+        dotnet-channel: LTS
+        architecture: x64
     - name: Restore dependencies
       run: dotnet restore
     - name: Build
@@ -43,7 +45,7 @@ jobs:
   
     steps:
     - name: Download artifacts
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v8
       
     - name: Create Release
       uses: ncipollo/release-action@v1
